@@ -1,7 +1,7 @@
-const inlineRule = /^(\${1,2})(?!\$)((?:\\.|[^\\\n])*?(?:\\.|[^\\\n$]))\1(?=[\s?!.,:？！。，：]|$)/
-const inlineRuleNonStandard = /^(\${1,2})(?!\$)((?:\\.|[^\\\n])*?(?:\\.|[^\\\n$]))\1/ // Non-standard, even if there are no spaces before and after $ or $$, try to parse
+const inlineRule = /^(?:\${1,2}(?!\$)((?:\\.|[^\\\n])*?(?:\\.|[^\\\n$]))\${1,2}(?=[\s?!.,:？！。，：]|$)|\\\(((?:\\.|[^\\\n])*?)\\\))/
+const inlineRuleNonStandard = /^(?:\${1,2}(?!\$)((?:\\.|[^\\\n])*?(?:\\.|[^\\\n$]))\${1,2}|\\\(((?:\\.|[^\\\n])*?)\\\))/
 
-const blockRule = /^(\${1,2})\n((?:\\[\s\S]|[^\\])+?)\n\1(?:\n|$)/
+const blockRule = /^(?:\${1,2}\n((?:\\[\s\S]|[^\\])+?)\n\${1,2}(?:\n|$)|\\\[\n?((?:\\[\s\S]|[^\\])+?)\n?\\\](?:\n|$))/
 
 function createRenderer(display) {
   return (token) => {
@@ -31,14 +31,20 @@ function inlineKatex(options, renderer) {
       let indexSrc = src
 
       while (indexSrc) {
-        index = indexSrc.indexOf(`$`)
-        if (index === -1) {
+        const dollarIndex = indexSrc.indexOf(`$`)
+        const bracketIndex = indexSrc.indexOf(`\\(`)
+
+        if (dollarIndex === -1 && bracketIndex === -1)
           return
-        }
+        index = (dollarIndex === -1)
+          ? bracketIndex
+          : (bracketIndex === -1)
+              ? dollarIndex
+              : Math.min(dollarIndex, bracketIndex)
+
         const f = nonStandard ? index > -1 : index === 0 || indexSrc.charAt(index - 1) === ` `
         if (f) {
           const possibleKatex = indexSrc.substring(index)
-
           if (possibleKatex.match(ruleReg)) {
             return index
           }
@@ -50,11 +56,12 @@ function inlineKatex(options, renderer) {
     tokenizer(src) {
       const match = src.match(ruleReg)
       if (match) {
+        const isBracket = match[0].startsWith(`\\(`)
         return {
           type: `inlineKatex`,
           raw: match[0],
-          text: match[2].trim(),
-          displayMode: match[1].length === 2,
+          text: (isBracket ? match[2] : match[1]).trim(),
+          displayMode: !isBracket && match[0].startsWith(`$$`),
         }
       }
     },
@@ -69,11 +76,12 @@ function blockKatex(options, renderer) {
     tokenizer(src) {
       const match = src.match(blockRule)
       if (match) {
+        const isBracket = match[0].startsWith(`\\[`)
         return {
           type: `blockKatex`,
           raw: match[0],
-          text: match[2].trim(),
-          displayMode: match[1].length === 2,
+          text: (isBracket ? match[2] : match[1]).trim(),
+          displayMode: true,
         }
       }
     },
