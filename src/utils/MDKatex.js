@@ -1,7 +1,7 @@
-const inlineRule = /^(?:\${1,2}(?!\$)((?:\\.|[^\\\n])*?(?:\\.|[^\\\n$]))\${1,2}(?=[\s?!.,:？！。，：]|$)|\\\(((?:\\.|[^\\\n])*?)\\\))/
-const inlineRuleNonStandard = /^(?:\${1,2}(?!\$)((?:\\.|[^\\\n])*?(?:\\.|[^\\\n$]))\${1,2}|\\\(((?:\\.|[^\\\n])*?)\\\))/
+const inlineRule = /^(?:\${1,2}(?!\$)((?:\\.|[^\\\n])*?(?:\\.|[^\\\n$]))\${1,2}(?=[\s?!.,:？！。，：]|$)|\\\(((?:\\.|[^\\\n])*?(?:\\.|[^\\\n]))\\\))/
+const inlineRuleNonStandard = /^(?:\${1,2}(?!\$)((?:\\.|[^\\\n])*?(?:\\.|[^\\\n$]))\${1,2}|\\\(((?:\\.|[^\\\n])*?(?:\\.|[^\\\n]))\\\))/
 
-const blockRule = /^(?:\${1,2}\n((?:\\[\s\S]|[^\\])+?)\n\${1,2}(?:\n|$)|\\\[\n?((?:\\[\s\S]|[^\\])+?)\n?\\\](?:\n|$))/
+const blockRule = /^[^\S\r\n]*((\${1,2})\n((?:\\[\s\S]|[^\\])+?)\n\2|\\\[((?:\\[\s\S]|[^\\])+?)\\\])[^\S\r\n]*(?:\n|$)/
 
 function createRenderer(display) {
   return (token) => {
@@ -76,11 +76,11 @@ function blockKatex(options, renderer) {
     tokenizer(src) {
       const match = src.match(blockRule)
       if (match) {
-        const isBracket = match[0].startsWith(`\\[`)
+        const isDollar = match[2]?.startsWith(`$`)
         return {
           type: `blockKatex`,
           raw: match[0],
-          text: (isBracket ? match[2] : match[1]).trim(),
+          text: (isDollar ? match[3] : match[4]).trim(),
           displayMode: true,
         }
       }
