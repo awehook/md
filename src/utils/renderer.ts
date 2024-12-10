@@ -189,7 +189,15 @@ export function initRenderer(opts: IOpts) {
 
     listitem(item: Tokens.ListItem): string {
       const prefix = isOrdered ? `${listIndex + 1}. ` : `• `
-      const content = item.tokens.map(t => (this[t.type as keyof Renderer] as <T>(token: T) => string)(t)).join(``)
+      // const content = item.tokens.map(t => (this[t.type as keyof Renderer] as <T>(token: T) => string)(t)).join(``)
+      const content = item.tokens.map((t) => {
+        const renderer = this[t.type as keyof Renderer] as ((token: any) => string) | undefined
+        if (renderer) {
+          return renderer.call(this, t)
+        }
+        // 如果找不到对应的渲染器，使用扩展的渲染器
+        return this.parser.parseInline([t])
+      }).join(``)
       return styledContent(`listitem`, `${prefix}${content}`, `li`)
     },
 

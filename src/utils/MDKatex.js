@@ -20,6 +20,48 @@ function createRenderer(display) {
   }
 }
 
+function inlineBlockKatex(options, renderer) {
+  const ruleReg = blockRule
+  return {
+    name: `inlineBlockKatex`,
+    level: `inline`,
+    start(src) {
+      let index
+      let indexSrc = src
+
+      while (indexSrc) {
+        const bracketIndex = indexSrc.indexOf(`\\[`)
+
+        if (bracketIndex === -1)
+          return
+        index = bracketIndex
+
+        const f = index === 0 || indexSrc.charAt(index - 1) === ` `
+        if (f) {
+          const possibleKatex = indexSrc.substring(index)
+          if (possibleKatex.match(ruleReg)) {
+            return index
+          }
+        }
+
+        indexSrc = indexSrc.substring(index + 1).replace(/^\$+/, ``)
+      }
+    },
+    tokenizer(src) {
+      const match = src.match(ruleReg)
+      if (match) {
+        return {
+          type: `blockKatex`,
+          raw: match[0],
+          text: (match[4]).trim(),
+          displayMode: true,
+        }
+      }
+    },
+    renderer,
+  }
+}
+
 function inlineKatex(options, renderer) {
   const nonStandard = options && options.nonStandard
   const ruleReg = nonStandard ? inlineRuleNonStandard : inlineRule
@@ -94,6 +136,7 @@ export function MDKatex(options = {}) {
     extensions: [
       inlineKatex(options, createRenderer(false)),
       blockKatex(options, createRenderer(true)),
+      inlineBlockKatex(options, createRenderer(true)),
     ],
   }
 }
